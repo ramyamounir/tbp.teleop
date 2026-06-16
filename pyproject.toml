@@ -28,7 +28,8 @@ dev = [
     "deptry",
 
     # Python static type checker
-    "mypy==1.11.2",
+    "mypy==1.14.1",
+    "types-PyYAML",
 
     # Testing, code style, etc...
     "pytest==7.1.1",
@@ -57,7 +58,7 @@ warn_unused_configs = true
 strict = true
 
 [[tool.mypy.overrides]]
-module = "tbp.monty.*"
+module = ["tbp.monty.*", "matplotlib.*", "quaternion.*", "mpl_toolkits.*"]
 ignore_missing_imports = true # Remove once tbp.monty types are published
 
 [tool.pytest.ini_options]
@@ -99,6 +100,8 @@ select = [
 ignore = [
     "COM812", # Trailing comma missing; conflicts with ruff format
     "ISC001", # Implicitly concatenated string literals on one line; conflicts with ruff format
+    "PLR1711", # PLR1711: Useless `return` statement at end of function
+    "RET501", # RET501: Do not explicitly `return None` in function if it is the only possible return value
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -112,7 +115,6 @@ ignore = [
 
 [tool.ruff.lint.flake8-copyright]
 author = "Thousand Brains Project"
-
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
