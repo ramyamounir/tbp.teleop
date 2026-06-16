@@ -1,6 +1,6 @@
 # tbp.teleop
 
-[![Limited Maintenance](https://img.shields.io/badge/Limited_Maintenance-%E2%9A%A0%EF%B8%8F-red?style=for-the-badge)](#limited-maintenance)
+[![Limited Maintenance](https://img.shields.io/badge/Limited_Maintenance-%E2%9A%A0%EF%B8%8F-red)](#limited-maintenance)
 
 Visualize and teleoperate a [tbp.monty](https://github.com/thousandbrainsproject/tbp.monty) experiment in real-time.
 
