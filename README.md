@@ -6,9 +6,9 @@ Visualize and teleoperate a [tbp.monty](https://github.com/thousandbrainsproject
 
 > [!NOTE]
 >
-> Originally created by @ramyamounir and submitted https://github.com/thousandbrainsproject/tbp.monty/pull/1016.
+> Originally created by [@ramyamounir](https://github.com/ramyamounir/) and submitted https://github.com/thousandbrainsproject/tbp.monty/pull/1016.
 >
-> @tristanls-tbp only converted the tool into the separate repo.
+> [@tristanls-tbp](https://github.com/tristanls-tbp/) only converted the tool into the separate repo.
 
 ## Installation
 
