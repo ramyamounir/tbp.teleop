@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tbp.monty.frameworks.experiments.teleop import Teleop
+from tbp.monty.frameworks.experiments.hooks import StepHook
 from typing_extensions import Self
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from tbp.teleop.plotter import Plotter
 
 
-class Default(Teleop):
+class Default(StepHook):
 
     _initialized: bool = False
     _plotter: Plotter

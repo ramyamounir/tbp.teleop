@@ -28,7 +28,7 @@ experiment:
     python_log_level: DEBUG
     logging:
       run_name: base_config_10distinctobj_dist_agent
-    teleop:
+    step_hook:
       _target_: tbp.teleop.default.Default
       plotter:
         _target_: tbp.teleop.live_plotter.LivePlotter
