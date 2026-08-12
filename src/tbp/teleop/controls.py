@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.backend_bases import KeyEvent
     from matplotlib.figure import Figure
+    from matplotlib.gridspec import SubplotSpec
     from tbp.monty.context import RuntimeContext
     from tbp.monty.frameworks.actions.actions import Action
     from tbp.monty.frameworks.models.abstract_monty_classes import Monty
@@ -479,3 +480,57 @@ class SelectorBar:
             return
         self.refresh_labels()
         self._on_change()
+
+
+class MemoryMapToggle:
+    """The memory-map toggle button in the figure's top-right corner.
+
+    One button that shows (or removes) the memory-map overlay covering the panel
+    area for the currently displayed learning module. The click never sets the
+    action selection, so it doesn't interfere with the interactive action wait.
+    """
+
+    def __init__(
+        self,
+        fig: Figure,
+        spec: SubplotSpec,
+        on_toggle: Callable[[], bool],
+        *,
+        shown: bool,
+    ) -> None:
+        """Lay out the toggle button in the top-right corner, above the plots.
+
+        Args:
+            fig: The figure to draw on.
+            spec: The Details column's subplot spec; the button right-aligns to it.
+            on_toggle: Shows or removes the memory-map overlay and returns whether
+                it is now shown.
+            shown: Whether the memory-map overlay is already shown, so the caption
+                survives a figure rebuild.
+        """
+        self._on_toggle = on_toggle
+        details = spec.get_position(fig)
+        width = (details.x1 - details.x0) * 0.48
+        ax = fig.add_axes((details.x1 - width, 0.955, width, 0.03))
+        self._button = Button(ax, self._caption(shown=shown))
+        self._button.on_clicked(self._on_click)
+
+    @staticmethod
+    def _caption(*, shown: bool) -> str:
+        """Return the button caption for the current overlay state.
+
+        Args:
+            shown: Whether the memory-map overlay is shown.
+
+        Returns:
+            The caption reflecting the state.
+        """
+        return f"Memory map: {'on' if shown else 'off'}"
+
+    def _on_click(self, _event: object) -> None:
+        """Toggle the memory-map overlay and update the caption.
+
+        Args:
+            _event: The matplotlib button event (unused).
+        """
+        self._button.label.set_text(self._caption(shown=self._on_toggle()))

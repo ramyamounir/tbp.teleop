@@ -476,6 +476,9 @@ class DetailsPanel:
     uses.
     """
 
+    _max_legend_objects = 10
+    _legend_wrap_chars = 30
+
     def __init__(
         self,
         fig: Figure,
@@ -690,13 +693,8 @@ class DetailsPanel:
         ax.cla()
         for graph_id in self._evidence_history:
             ax.plot(self._evidence_steps, history[graph_id], label=graph_id)
-        for i, burst_step in enumerate(self._burst_steps):
-            ax.axvline(
-                burst_step,
-                linestyle="--",
-                color="red",
-                label="burst" if i == 0 else None,
-            )
+        for burst_step in self._burst_steps:
+            ax.axvline(burst_step, linestyle="--", color="red")
         ax.set_title(title)
         ax.set_xlabel("step")
         ax.set_ylabel(ylabel)
@@ -706,7 +704,10 @@ class DetailsPanel:
 
         The legend would otherwise run off the figure's right edge, so it is drawn in a
         dedicated axis squeezed between the evidence and hypotheses plots, with the
-        handles gathered from the line plots.
+        handles gathered from the line plots. With many objects in memory the full
+        legend is unmanageable, so only the `_max_legend_objects` objects with the
+        highest current evidence are listed, highest first (every object is still
+        plotted).
         """
         if self._inference_legend is not None:
             self._inference_legend.remove()
@@ -714,11 +715,91 @@ class DetailsPanel:
         handles, labels = self._num_hyp_ax.get_legend_handles_labels()
         if not handles:
             return
+        handle_by_label = dict(zip(labels, handles))
+        top = sorted(handle_by_label, key=self._latest_evidence, reverse=True)
+        top = top[: self._max_legend_objects]
+        handles = [handle_by_label[graph_id] for graph_id in top]
+        labels = [self._wrap_label(graph_id) for graph_id in top]
+        title = None
+        if len(top) < len(handle_by_label):
+            title = f"top {len(top)} of {len(handle_by_label)} by evidence"
         self._inference_legend = self._legend_ax.legend(
             handles,
             labels,
             loc="center",
             ncol=2,
-            fontsize=10,
+            fontsize=self._legend_fontsize(labels),
             borderaxespad=0.0,
+            title=title,
+            title_fontsize=9,
         )
+
+    @staticmethod
+    def _legend_fontsize(labels: list[str]) -> int:
+        """Choose a legend font size that keeps the wrapped legend inside its slot.
+
+        The legend fills column-major over two columns, so its height is the sum of
+        each row's tallest (most wrapped) label. The font shrinks as that line count
+        grows, keeping a legend full of long merged-object names from spilling into
+        the line plots above and below.
+
+        Args:
+            labels: The (possibly multi-line) legend labels.
+
+        Returns:
+            The legend font size.
+        """
+        rows = (len(labels) + 1) // 2
+        heights = [label.count("\n") + 1 for label in labels]
+        total_lines = sum(
+            max(heights[i], heights[i + rows] if i + rows < len(heights) else 0)
+            for i in range(rows)
+        )
+        # (max total lines, font size), tried in order; taller legends get 6.
+        for max_lines, fontsize in ((6, 10), (9, 8), (13, 7)):
+            if total_lines <= max_lines:
+                return fontsize
+        return 6
+
+    def _wrap_label(self, label: str) -> str:
+        """Wrap a long legend label onto multiple lines at underscore boundaries.
+
+        Merged-object names concatenate their sources with underscores and can grow
+        far wider than the legend, so labels longer than `_legend_wrap_chars` are
+        broken into lines of underscore-separated chunks. A line that continues keeps
+        its trailing underscore, so the wrapped text still reads as the original name.
+
+        Args:
+            label: The graph id to wrap.
+
+        Returns:
+            The label with newlines inserted, or unchanged when it is short enough.
+        """
+        if len(label) <= self._legend_wrap_chars:
+            return label
+        lines: list[str] = []
+        current = ""
+        for part in label.split("_"):
+            candidate = f"{current}_{part}" if current else part
+            if current and len(candidate) > self._legend_wrap_chars:
+                lines.append(f"{current}_")
+                current = part
+            else:
+                current = candidate
+        lines.append(current)
+        return "\n".join(lines)
+
+    def _latest_evidence(self, graph_id: str) -> float:
+        """Return an object's most recent evidence value for legend ranking.
+
+        Args:
+            graph_id: The object whose evidence series is read.
+
+        Returns:
+            The last recorded evidence, or `-inf` when the series is empty or ends in
+            NaN (e.g. an object no longer in memory), so the object ranks last.
+        """
+        series = self._evidence_history.get(graph_id)
+        if not series or np.isnan(series[-1]):
+            return float("-inf")
+        return float(series[-1])

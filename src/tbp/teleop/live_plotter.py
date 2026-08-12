@@ -20,6 +20,7 @@ from tbp.monty.frameworks.models.no_reset_evidence_matching import (
 
 from tbp.teleop.controls import (
     ActionButtons,
+    MemoryMapToggle,
     SelectorBar,
     SpeedSlider,
 )
@@ -29,6 +30,7 @@ from tbp.teleop.helpers import (
     draw_section_dividers,
     is_interactive_backend,
 )
+from tbp.teleop.memory_map import MemoryMap
 from tbp.teleop.panels import (
     DetailsPanel,
     MontyPanel,
@@ -53,7 +55,10 @@ class LivePlotter(Plotter):
     learning module. You can switch both the displayed learning module and the selected
     input channel at runtime with two cycling buttons under the `Step N` title. The
     learning module and channel are discovered from the model rather than configured by
-    id.
+    id. A `Memory map` toggle in the figure's top-right corner overlays (and removes)
+    a map of the displayed learning module's graph memory covering the panel area;
+    the overlay follows the displayed LM and stays open across episodes until
+    toggled off.
 
     - Simulator: view finder and RGB patch of the sensor module feeding the selected
       (or, for an LM channel, the displayed LM's first sensor) channel.
@@ -80,6 +85,7 @@ class LivePlotter(Plotter):
     _history: EvidenceHistory
     _last_observations: Observations | None
     _last_step: int | None
+    _memory_map: MemoryMap | None
     _supervised_lm_ids: list[str]
 
     def __init__(
@@ -109,6 +115,7 @@ class LivePlotter(Plotter):
 
         self.fig = None
         self._controls = None
+        self._memory_map = None
 
     def _lm_building_graph(self, lm: LearningModule) -> bool:
         """Whether a learning module is building a graph this step.
@@ -219,10 +226,20 @@ class LivePlotter(Plotter):
         self._selector = SelectorBar(
             self.fig, self._monty_spec, self._channel_view, self._redraw
         )
+        self._map_toggle = MemoryMapToggle(
+            self.fig,
+            self._details_spec,
+            self._toggle_memory_map,
+            shown=self._memory_map is not None,
+        )
         if self.interactive:
             self._controls.build(self.fig, self._simulator.ax_rgb)
         else:
             self._controls.build(self.fig)
+
+        # An overlay left open across an episode boundary moves to the new figure.
+        if self._memory_map is not None:
+            self._memory_map.initialize(self.fig, self._channel_view.lm)
 
         if is_interactive_backend():
             self.fig.show()
@@ -279,6 +296,7 @@ class LivePlotter(Plotter):
 
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
+        self._update_memory_map()
 
     def _redraw(self) -> None:
         """Repaint the last frame after a selection change, without re-accumulating.
@@ -322,14 +340,45 @@ class LivePlotter(Plotter):
         """
         return self._controls.override_action(ctx, proposed)
 
+    def _toggle_memory_map(self) -> bool:
+        """Show or remove the memory-map overlay for the displayed learning module.
+
+        Called by the `Memory map` toggle button. The overlay follows the displayed
+        LM: cycling the LM while the overlay is open rebinds the map to the new
+        selection on the next repaint.
+
+        Returns:
+            True when the overlay is now shown, False when it was removed.
+        """
+        if self._memory_map is None:
+            self._memory_map = MemoryMap()
+            self._memory_map.initialize(self.fig, self._channel_view.lm)
+            return True
+        self._memory_map.close()
+        self._memory_map = None
+        return False
+
+    def _update_memory_map(self) -> None:
+        """Keep an open memory-map overlay bound to the displayed LM and current."""
+        if self._memory_map is None:
+            return
+        if self._memory_map.lm is not self._channel_view.lm:
+            self._memory_map.initialize(self.fig, self._channel_view.lm)
+        else:
+            self._memory_map.update()
+
     def close(self) -> None:
         """Close the final figure and drop widget references."""
+        if self._memory_map is not None:
+            self._memory_map.close()
+            self._memory_map = None
         if self.fig is not None:
             plt.close(self.fig)
             self.fig = None
         if self._controls is not None:
             self._controls.close()
         self._selector = None
+        self._map_toggle = None
         self._simulator = None
         self._monty = None
         self._details = None
