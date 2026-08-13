@@ -97,7 +97,7 @@ warn_unused_configs = true
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["tbp.monty.*", "matplotlib.*", "quaternion.*", "mpl_toolkits.*"]
+module = ["tbp.monty.*", "matplotlib.*", "quaternion.*", "mpl_toolkits.*", "scipy.*"]
 ignore_missing_imports = true # Remove once tbp.monty types are published
 
 [tool.pytest.ini_options]
